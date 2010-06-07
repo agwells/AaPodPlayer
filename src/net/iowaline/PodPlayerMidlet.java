@@ -40,50 +40,76 @@ public class PodPlayerMidlet extends MIDlet implements CommandListener, ItemStat
     private Timer timeDisplayTimer;
     private UpdateDisplayTask timeTask;
 
+    /**
+     * 
+     * @param item
+     */
     public void itemStateChanged(Item item) {
         if ( item == timeGauge ){
-            adjustPlayerTimeByGauge( (Gauge) timeGauge );
+            adjustPlayerTimeByGauge( (Gauge) item );
         }
         if ( item == volumeGauge ){
             adjustPlayerVolumeByGauge( (Gauge) item );
         }
     }
 
+    /**
+     *
+     * @param timeGauge
+     */
     private void adjustPlayerTimeByGauge( Gauge timeGauge ){
-        long seconds = timeGauge.getValue() * mp3Player.getDuration() / timeGauge.getMaxValue() / 1000000;
-        adjustPlayerTimeBySeconds(seconds);
+        long seconds = timeGauge.getValue() * mp3Player.getDuration() / timeGauge.getMaxValue();
+        try {
+            mp3Player.setMediaTime(seconds);
+        } catch (MediaException ex) {
+            ex.printStackTrace();
+        }
+    }
+
+    /**
+     * Adjust the time of the Player by a number of seconds (positive or negative)
+     * Also update the gauge and the display at the same time.
+     * @param seconds
+     */
+    public void adjustPlayerTimeBySeconds( long seconds ){
+        try {
+            mp3Player.setMediaTime(mp3Player.getMediaTime() + seconds * 1000000);
+        } catch (MediaException ex) {
+            switchDisplayable(new Alert("adjustPlayerTimeBySeconds", ex.toString(), null, AlertType.ERROR), getDisplay().getCurrent());
+        }
+    }
+
+    /**
+     * Adjust the volume level
+     *
+     * @param level
+     */
+    public void adjustPlayerVolumeByGauge( Gauge volumeGauge ){
+        volumeControl.setLevel( volumeGauge.getValue() * 100 / volumeGauge.getMaxValue());
     }
 
     public class UpdateDisplayTask extends TimerTask{
 
+        private Screen playerScreen;
         private Player mp3Player;
         private Gauge timeGauge;
-        private Gauge volumeGauge;
-        private VolumeControl volControl;
         private long time = 0;
         private long mediaDuration = 0;
         private int timeGaugeMaxValue;
         
-        public UpdateDisplayTask( Player mp3Player, VolumeControl volControl, Gauge timeGauge, Gauge volumeGauge ){
+        public UpdateDisplayTask( Player mp3Player, Gauge timeGauge, Screen playerScreen ){
             this.mp3Player = mp3Player;
-            this.volControl = volControl;
             this.timeGauge = timeGauge;
-            this.volumeGauge = volumeGauge;
+            this.playerScreen = playerScreen;
             this.mediaDuration = mp3Player.getDuration();
             this.timeGaugeMaxValue = timeGauge.getMaxValue();
         }
         
         public void run() {
-            try {
-                if (mp3Player.getState() != Player.CLOSED){
-                    time = mp3Player.getMediaTime();
-                    timeGauge.setLabel(formatMicroseconds(time));
-                    timeGauge.setValue((int) ( time * timeGaugeMaxValue / mediaDuration) );
-                }
-            } catch ( IllegalStateException ise ){
-                // Probably should do something here...
-            } catch ( Exception e ){
-                e.printStackTrace();
+            if (mp3Player.getState() != Player.CLOSED){
+                time = mp3Player.getMediaTime();
+                timeGauge.setLabel(formatMicroseconds(time) + Integer.toString(mp3Player.getState()));
+                timeGauge.setValue((int) ( time * timeGaugeMaxValue / mediaDuration) );
             }
         }
     }
@@ -190,27 +216,6 @@ public class PodPlayerMidlet extends MIDlet implements CommandListener, ItemStat
     }//GEN-BEGIN:|5-switchDisplayable|2|
     //</editor-fold>//GEN-END:|5-switchDisplayable|2|
 
-    private void openMp3File( FileBrowser pScreenFileBrowser, Player pMp3Player, VolumeControl pVolumeControl, UpdateDisplayTask pTimeTask, Timer pTimeDisplayTimer, Ticker pTicker, Gauge pTimeGauge, Gauge pVolumeGauge, Screen pScreenPlayer ){
-        String mp3FileUrl = pScreenFileBrowser.getSelectedFileURL();
-        try {
-            pMp3Player = Manager.createPlayer(mp3FileUrl);
-            pMp3Player.realize();
-            pMp3Player.prefetch();
-            pVolumeControl = (VolumeControl) pMp3Player.getControl("VolumeControl");
-            pTimeTask = new UpdateDisplayTask(pMp3Player, pVolumeControl, pTimeGauge, pVolumeGauge);
-            pTimeDisplayTimer.scheduleAtFixedRate(pTimeTask, 0, 500);
-        } catch (IOException ex) {
-            ex.printStackTrace();
-        } catch (MediaException ex) {
-            ex.printStackTrace();
-        }
-
-        pTicker.setString(mp3FileUrl);
-
-        switchDisplayable(null, pScreenPlayer);
-        // write post-action user code here
-    }
-
     //<editor-fold defaultstate="collapsed" desc=" Generated Method: commandAction for Displayables ">//GEN-BEGIN:|7-commandAction|0|7-preCommandAction
     /**
      * Called by a system to indicated that a command has been invoked on a particular displayable.
@@ -222,17 +227,21 @@ public class PodPlayerMidlet extends MIDlet implements CommandListener, ItemStat
         if (displayable == screenFileBrowser) {//GEN-BEGIN:|7-commandAction|1|16-preAction
             if (command == FileBrowser.SELECT_FILE_COMMAND) {//GEN-END:|7-commandAction|1|16-preAction
 
-                this.openMp3File(
-                        getScreenFileBrowser(),
-                        mp3Player,
-                        volumeControl,
-                        timeTask,
-                        timeDisplayTimer,
-                        getTicker(),
-                        getTimeGauge(),
-                        getVolumeGauge(),
-                        screenPlayer
-                );
+                String mp3FileUrl = screenFileBrowser.getSelectedFileURL();
+                try {
+                    mp3Player = Manager.createPlayer(mp3FileUrl);
+                    mp3Player.realize();
+                    mp3Player.prefetch();
+                    volumeControl = (VolumeControl) mp3Player.getControl("VolumeControl");
+                    timeTask = new UpdateDisplayTask(mp3Player, timeGauge, screenPlayer);
+                    timeDisplayTimer.scheduleAtFixedRate(timeTask, 0, 500);
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                } catch (MediaException ex) {
+                    ex.printStackTrace();
+                }
+
+                ticker.setString(mp3FileUrl);
 
                 switchDisplayable(null, screenPlayer);//GEN-LINE:|7-commandAction|2|16-postAction
                 // write post-action user code here
@@ -253,12 +262,7 @@ public class PodPlayerMidlet extends MIDlet implements CommandListener, ItemStat
                     if ( mp3Player.getState() == Player.STARTED ){
                         mp3Player.stop();
                     } else {
-                        // todo: put some synchronization stuff here so that
-                        // it'll still work even if the time gauge updater
-                        // runs in between
-                        long time = mp3Player.getMediaTime();
                         mp3Player.start();
-                        mp3Player.setMediaTime(time);
                     }
                 } catch (MediaException ex){
                     ex.printStackTrace();
@@ -446,30 +450,4 @@ public class PodPlayerMidlet extends MIDlet implements CommandListener, ItemStat
      */
     public void destroyApp(boolean unconditional) {
     }
-
-    /**
-     * Adjust the time of the Player by a number of seconds (positive or negative)
-     * Also update the gauge and the display at the same time.
-     * @param seconds
-     */
-    public void adjustPlayerTimeBySeconds( long seconds ){
-        try {
-            mp3Player.setMediaTime(mp3Player.getMediaTime() + seconds * 1000000);
-        } catch (MediaException ex) {
-            ex.printStackTrace();
-        } catch (IllegalStateException ise ){
-            // This seems unlikely to happen, but then again, I think the
-            // state may change to CLOSED when it finishes with the file?
-        }
-    }
-
-    /**
-     * Adjust the volume level
-     *
-     * @param level
-     */
-    public void adjustPlayerVolumeByGauge( Gauge volumeGauge ){
-        volumeControl.setLevel( volumeGauge.getValue() * 100 / volumeGauge.getMaxValue());
-    }
-
 }
