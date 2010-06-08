@@ -5,6 +5,10 @@
 
 package net.iowaline;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -16,6 +20,7 @@ import javax.microedition.media.Player;
 import javax.microedition.media.control.VolumeControl;
 import javax.microedition.rms.RecordStore;
 import javax.microedition.rms.RecordStoreException;
+import javax.microedition.rms.RecordStoreNotOpenException;
 import org.netbeans.microedition.lcdui.pda.FileBrowser;
 
 /**
@@ -23,7 +28,6 @@ import org.netbeans.microedition.lcdui.pda.FileBrowser;
  */
 public class PodPlayerMidlet extends MIDlet implements CommandListener, ItemStateListener {
     private static final String LAST_FILE_RECORDSTORE = "lastFilePlaying";
-    private static final String LAST_PLAYTIME_RECORDSTORE = "lastPlayTime";
 
     private boolean midletPaused = false;
 
@@ -45,6 +49,7 @@ public class PodPlayerMidlet extends MIDlet implements CommandListener, ItemStat
     private Timer timeDisplayTimer;
     private UpdateDisplayTask timeTask;
     private String currentFileUrl;
+    private long startTime;
 
     /**
      * 
@@ -112,7 +117,7 @@ public class PodPlayerMidlet extends MIDlet implements CommandListener, ItemStat
         public void run() {
             if (mp3Player.getState() != Player.CLOSED){
                 time = mp3Player.getMediaTime();
-                timeGauge.setLabel(formatMicroseconds(time) + Integer.toString(mp3Player.getState()));
+                timeGauge.setLabel(formatMicroseconds(time));
                 timeGauge.setValue((int) ( time * timeGaugeMaxValue / mediaDuration) );
             }
         }
@@ -125,11 +130,11 @@ public class PodPlayerMidlet extends MIDlet implements CommandListener, ItemStat
      */
     public String formatMicroseconds( long numMicroseconds ){
         if ( numMicroseconds == 0 ){
-            return "0:00:00.0";
+            return "0:00:00";
         }
 
         StringBuffer timeStr = new StringBuffer(10);
-        long deciSeconds = (numMicroseconds / 100000) % 10;
+//        long deciSeconds = (numMicroseconds / 100000) % 10;
         long seconds = (numMicroseconds / 1000000 ) % 60;
         long minutes = (numMicroseconds / 1000000 / 60 ) % 60;
         long hours = (numMicroseconds / 1000000 / 60 / 60 );
@@ -146,9 +151,89 @@ public class PodPlayerMidlet extends MIDlet implements CommandListener, ItemStat
         } else {
             timeStr.append(seconds);
         }
-        timeStr.append(".");
-        timeStr.append(deciSeconds);
+//        timeStr.append(".");
+//        timeStr.append(deciSeconds);
         return timeStr.toString();
+    }
+
+    /**
+     *
+     * @param recordStoreName
+     * @param fileUrl
+     * @param playTime
+     */
+    private void savePreferences(String recordStoreName, String fileUrl, long playTime ){
+        // Delete the saved preferences first, to avoid corruption issues from re-writing
+        clearSavedPreferences(recordStoreName);
+        ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
+        DataOutputStream dataStream = new DataOutputStream(byteStream);
+        RecordStore store = null;
+        try {
+            dataStream.writeUTF(fileUrl);
+            dataStream.writeLong(playTime);
+            dataStream.flush();
+            byte[] byteArray = byteStream.toByteArray();
+            store = RecordStore.openRecordStore(recordStoreName, true);
+            store.addRecord(byteArray, 0, byteArray.length);
+        } catch (Exception e){
+            e.printStackTrace();
+        } finally {
+            if ( store != null ){
+                try {
+                    store.closeRecordStore();
+                } catch (RecordStoreNotOpenException ex) {
+                    ex.printStackTrace();
+                } catch (RecordStoreException ex) {
+                    ex.printStackTrace();
+                }
+            }
+        }
+    }
+
+    /**
+     *
+     * @param recordStoreName
+     */
+    private void readPreferences(String recordStoreName){
+        this.currentFileUrl = null;
+        this.startTime = 0L;
+        RecordStore store = null;
+        try {
+            store = RecordStore.openRecordStore(recordStoreName, true);
+            int numRecords = store.getNumRecords();
+            System.out.println("numRecords: " + Integer.toString(numRecords));
+            if ( store.getNumRecords() > 0 ){
+                ByteArrayInputStream byteStream = new ByteArrayInputStream(store.getRecord(1));
+                DataInputStream dataStream = new DataInputStream(byteStream);
+                currentFileUrl = dataStream.readUTF();
+                startTime = dataStream.readLong();
+            }
+        } catch (Exception e){
+            e.printStackTrace();
+        } finally {
+            if ( store != null ){
+                try {
+                    store.closeRecordStore();
+                } catch (RecordStoreNotOpenException ex) {
+                    ex.printStackTrace();
+                } catch (RecordStoreException ex) {
+                    ex.printStackTrace();
+                }
+            }
+        }
+    }
+
+    /**
+     * 
+     * @param recordStoreName
+     */
+    private void clearSavedPreferences( String recordStoreName ){
+        try {
+            // Clear the RecordStore if it exists, before saving this one
+            RecordStore.deleteRecordStore(recordStoreName);
+        } catch (RecordStoreException ex) {
+            ex.printStackTrace();
+        }
     }
 
     /**
@@ -177,19 +262,7 @@ public class PodPlayerMidlet extends MIDlet implements CommandListener, ItemStat
         screenPlayer.setCommandListener(this);//GEN-END:|0-initialize|1|0-postInitialize
         // write post-initialize user code here
         screenPlayer.setItemStateListener(this);
-        currentFileUrl = null;
-        try {
-            RecordStore store = RecordStore.openRecordStore(LAST_FILE_RECORDSTORE, true);
-            int numRecords = store.getNumRecords();
-            System.out.println("numRecords: " + Integer.toString(numRecords));
-            if ( store.getNumRecords() > 0 ){
-                currentFileUrl = new String(store.getRecord(1));
-            }
-            store.closeRecordStore();
-        } catch (Exception e){
-            e.printStackTrace();
-        }
-
+        readPreferences(LAST_FILE_RECORDSTORE);
     }//GEN-BEGIN:|0-initialize|2|
     //</editor-fold>//GEN-END:|0-initialize|2|
 
@@ -253,7 +326,7 @@ public class PodPlayerMidlet extends MIDlet implements CommandListener, ItemStat
                     volumeControl = (VolumeControl) mp3Player.getControl("VolumeControl");
                     timeTask = new UpdateDisplayTask(mp3Player, timeGauge);
 
-                    timeDisplayTimer.scheduleAtFixedRate(timeTask, 0, 500);
+                    timeDisplayTimer.scheduleAtFixedRate(timeTask, 0, 1000);
                 } catch (IOException ex) {
                     ex.printStackTrace();
                 } catch (MediaException ex) {
@@ -283,8 +356,11 @@ public class PodPlayerMidlet extends MIDlet implements CommandListener, ItemStat
                 mp3Player = null;
                 timeTask.cancel();
                 timeTask = null;
+                
+                // Clear the saved preferences (since we're going to another track)
+                clearSavedPreferences( LAST_FILE_RECORDSTORE );
                 try {
-                    // Clear the RecordStore if it exists, before saving this one
+                    // Clear the RecordStore if it exists
                     RecordStore.deleteRecordStore(LAST_FILE_RECORDSTORE);
                 } catch (RecordStoreException ex) {
                     ex.printStackTrace();
@@ -303,20 +379,8 @@ public class PodPlayerMidlet extends MIDlet implements CommandListener, ItemStat
 //GEN-LINE:|7-commandAction|10|62-postAction
                 // write post-action user code here
             } else if (command == cmdPlayerQuit) {//GEN-LINE:|7-commandAction|11|64-preAction
-                try {
-                    // Clear the RecordStore if it exists, before saving this one
-                    RecordStore.deleteRecordStore(LAST_FILE_RECORDSTORE);
-                } catch (RecordStoreException ex) {
-                    ex.printStackTrace();
-                }
+                savePreferences( LAST_FILE_RECORDSTORE, currentFileUrl, mp3Player.getMediaTime());
 
-                try {
-                    RecordStore store = RecordStore.openRecordStore(LAST_FILE_RECORDSTORE, true);
-                    store.addRecord(currentFileUrl.getBytes(), 0, currentFileUrl.getBytes().length);
-                    store.closeRecordStore();
-                } catch (Exception e){
-                    e.printStackTrace();
-                }
                 exitMIDlet();//GEN-LINE:|7-commandAction|12|64-postAction
                 // write post-action user code here
             }//GEN-BEGIN:|7-commandAction|13|7-postCommandAction
@@ -483,14 +547,19 @@ public class PodPlayerMidlet extends MIDlet implements CommandListener, ItemStat
                     mp3Player = Manager.createPlayer(currentFileUrl);
                     mp3Player.realize();
                     mp3Player.prefetch();
+                    mp3Player.setMediaTime(startTime);
                     volumeControl = (VolumeControl) mp3Player.getControl("VolumeControl");
                     timeTask = new UpdateDisplayTask(mp3Player, timeGauge);
 
                     timeDisplayTimer.scheduleAtFixedRate(timeTask, 0, 500);
                 } catch (IOException ex) {
                     ex.printStackTrace();
+                    switchDisplayable(null, getScreenFileBrowser() );
+                    return;
                 } catch (MediaException ex) {
                     ex.printStackTrace();
+                    switchDisplayable(null, getScreenFileBrowser() );
+                    return;
                 }
 
                 ticker.setString(currentFileUrl);
