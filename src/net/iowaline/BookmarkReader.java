@@ -17,7 +17,8 @@ import javax.microedition.io.file.FileConnection;
  */
 public class BookmarkReader {
     private final String selectedFileUrl;
-    private final String bmarkUrl;
+    private final String selectedFileName;
+    private final String bmarkDirectory;
     private final FileConnection bmarkFile;
     private long fileSize;
     private final Vector bmarkList = new Vector();
@@ -25,7 +26,15 @@ public class BookmarkReader {
     BookmarkReader(String selectedFileUrl) {
         this.selectedFileUrl = selectedFileUrl;
         // Figure out the parent directory's name
-        bmarkUrl = this.selectedFileUrl.substring(0, this.selectedFileUrl.lastIndexOf('/')) + ".bmark";
+        int lastSlashPos = this.selectedFileUrl.lastIndexOf('/');
+        if ( lastSlashPos == -1 || lastSlashPos == this.selectedFileUrl.length()-1 ){
+            throw new IllegalArgumentException("Invalid filename: " + selectedFileUrl);
+        }
+        bmarkDirectory = this.selectedFileUrl.substring(0, lastSlashPos);
+        String bmarkUrl = bmarkDirectory + ".bmark";
+        this.selectedFileName = this.selectedFileUrl.substring(
+                this.selectedFileUrl.lastIndexOf('/')+1
+        );
 
         FileConnection fc = null;
         try {
@@ -71,11 +80,17 @@ public class BookmarkReader {
         return this.fileSize;
     }
 
-    String getBmarkUrl(){
-        return this.bmarkUrl;
+    String getBmarkDirectory(){
+        return this.bmarkDirectory;
     }
 
-    Vector getBmarkList(){
+    /**
+     * Get all the bookmarks in the file
+     *
+     * @return Vector a vector full of Bookmark items
+     */
+    Vector getFullBmarkList(){
         return this.bmarkList;
     }
+
 }

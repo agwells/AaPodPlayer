@@ -53,12 +53,12 @@ try {
         if ( dsplbl == scrnFileBrowser && cmnd == FileBrowser.SELECT_FILE_COMMAND ){
             BookmarkReader bmark = new BookmarkReader(scrnFileBrowser.getSelectedFileURL());
             List scrnBookmarkList = new List(
-                    bmark.getBmarkUrl(),
+                    bmark.getBmarkDirectory(),
                     List.IMPLICIT,
                     new String[0],
                     null
             );
-            Vector bmarkList = bmark.getBmarkList();
+            Vector bmarkList = bmark.getFullBmarkList();
             for( int i = 0; i < bmarkList.size(); i++ ){
                 scrnBookmarkList.append( bmarkList.elementAt(i).toString(), null);
             }

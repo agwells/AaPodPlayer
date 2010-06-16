@@ -5,8 +5,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.util.Hashtable;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.Vector;
 import javax.microedition.media.MediaException;
 import javax.microedition.midlet.*;
 import javax.microedition.lcdui.*;
@@ -28,6 +30,7 @@ public class PodPlayerMidlet extends MIDlet implements CommandListener, ItemStat
 
     private FileBrowser screenFileBrowser;
     private Form screenPlayer;
+    private List screenBookmarkList = new List("Bookmarks", Choice.IMPLICIT);
     private Gauge volumeGauge;
     private Gauge timeGauge;
     private Command cmdChangeTrack;
@@ -35,6 +38,8 @@ public class PodPlayerMidlet extends MIDlet implements CommandListener, ItemStat
     private Command cmdFileBrowserQuit;
     private Command cmdPlayerQuit;
     private Command cmdPlayerPause;
+    private Command cmdListBookmarks = new Command("List bookmarks", Command.ITEM, 10);
+    private Command cmdBack = new Command("Back", Command.BACK, 1);
     private Ticker ticker;
 
     private Player mp3Player;
@@ -43,6 +48,15 @@ public class PodPlayerMidlet extends MIDlet implements CommandListener, ItemStat
     private UpdateDisplayTask timeTask;
     private String currentFileUrl;
     private long startTime;
+    /**
+     * A field to store the list of bookmarks from the bookmark list screen,
+     * so that we don't have to re-examine the file
+     */
+    private BookmarkReader bookmarkList;
+    /**
+     * The keys are directories in Rockbox, the values are keys on the phone
+     */
+    private Hashtable pathMaps = new Hashtable();
 
     /**
      * 
@@ -90,6 +104,63 @@ public class PodPlayerMidlet extends MIDlet implements CommandListener, ItemStat
      */
     public void adjustPlayerVolumeByGauge( Gauge volumeGauge ){
         volumeControl.setLevel( volumeGauge.getValue() * 100 / volumeGauge.getMaxValue());
+    }
+
+    /**
+     * Find the bookmark file for the current file, and list any bookmarks for
+     * it
+     *
+     * @param currentFileUrl
+     */
+    private void listBookmarks(String currentFileUrl) {
+        BookmarkReader reader = new BookmarkReader(currentFileUrl);
+        Vector bmarkList = reader.getFullBmarkList();
+        screenBookmarkList.deleteAll();
+        for( int i = 0; i < bmarkList.size(); i++ ){
+            screenBookmarkList.insert(i, ((Bookmark) bmarkList.elementAt(i)).toString(), null);
+        }
+        this.bookmarkList = reader;
+        switchDisplayable(null, screenBookmarkList);
+    }
+
+    /**
+     * Start up the mp3 player
+     */
+    private void startMp3Player( long startTime ) throws MediaException, IOException {
+                    mp3Player = Manager.createPlayer(currentFileUrl);
+                    mp3Player.realize();
+                    mp3Player.prefetch();
+                    mp3Player.setMediaTime(startTime);
+                    volumeControl = (VolumeControl) mp3Player.getControl("VolumeControl");
+                    timeTask = new UpdateDisplayTask(mp3Player, timeGauge);
+                    timeDisplayTimer.scheduleAtFixedRate(timeTask, 0, 500);
+
+                    mp3Player = Manager.createPlayer(currentFileUrl);
+                    mp3Player.realize();
+                    mp3Player.prefetch();
+                    volumeControl = (VolumeControl) mp3Player.getControl("VolumeControl");
+                    timeTask = new UpdateDisplayTask(mp3Player, timeGauge);
+                    timeDisplayTimer.scheduleAtFixedRate(timeTask, 0, 1000);
+    }
+
+    /**
+     * Perform tasks to stop the MP3 player
+     */
+    private void stopMp3Player() {
+        try {
+            mp3Player.close();
+            mp3Player = null;
+        } catch (Exception e){
+            // todo: something here that won't make Java dudes cry into their beards
+            e.printStackTrace();
+        }
+        try {
+            timeTask.cancel();
+            timeTask = null;
+        } catch (Exception e){
+            // todo: see above
+            e.printStackTrace();
+        }
     }
 
     public class UpdateDisplayTask extends TimerTask{
@@ -194,7 +265,7 @@ public class PodPlayerMidlet extends MIDlet implements CommandListener, ItemStat
         try {
             store = RecordStore.openRecordStore(recordStoreName, true);
             int numRecords = store.getNumRecords();
-            System.out.println("numRecords: " + Integer.toString(numRecords));
+//            System.out.println("numRecords: " + Integer.toString(numRecords));
             if ( store.getNumRecords() > 0 ){
                 ByteArrayInputStream byteStream = new ByteArrayInputStream(store.getRecord(1));
                 DataInputStream dataStream = new DataInputStream(byteStream);
@@ -249,8 +320,17 @@ public class PodPlayerMidlet extends MIDlet implements CommandListener, ItemStat
         screenPlayer.addCommand(getCmdChangeTrack());
         screenPlayer.setCommandListener(this);
 
+        screenPlayer.addCommand(cmdListBookmarks);
+
         screenPlayer.setItemStateListener(this);
+
+        screenBookmarkList.addCommand(cmdBack);
+        screenBookmarkList.setCommandListener(this);
+
         readPreferences(LAST_FILE_RECORDSTORE);
+
+        pathMaps.put("/<microSD1>", "E:/");
+        pathMaps.put("/", "C:/");
     }
 
     /**
@@ -292,13 +372,7 @@ public class PodPlayerMidlet extends MIDlet implements CommandListener, ItemStat
 
                 currentFileUrl = screenFileBrowser.getSelectedFileURL();
                 try {
-                    mp3Player = Manager.createPlayer(currentFileUrl);
-                    mp3Player.realize();
-                    mp3Player.prefetch();
-                    volumeControl = (VolumeControl) mp3Player.getControl("VolumeControl");
-                    timeTask = new UpdateDisplayTask(mp3Player, timeGauge);
-
-                    timeDisplayTimer.scheduleAtFixedRate(timeTask, 0, 1000);
+                    startMp3Player(0);
                 } catch (IOException ex) {
                     ex.printStackTrace();
                 } catch (MediaException ex) {
@@ -316,10 +390,7 @@ public class PodPlayerMidlet extends MIDlet implements CommandListener, ItemStat
                 adjustPlayerTimeBySeconds(-15);
             } else if (command == cmdChangeTrack) {
                 switchDisplayable(null, getScreenFileBrowser());
-                mp3Player.close();
-                mp3Player = null;
-                timeTask.cancel();
-                timeTask = null;
+                stopMp3Player();
 
                 // Clear the saved preferences (since we're going to another track)
                 clearSavedPreferences( LAST_FILE_RECORDSTORE );
@@ -339,10 +410,30 @@ public class PodPlayerMidlet extends MIDlet implements CommandListener, ItemStat
                 } catch (MediaException ex){
                     ex.printStackTrace();
                 }
+            } else if ( command == cmdListBookmarks ){
+                // switch to list of bookmarks
+                stopMp3Player();
+                listBookmarks(currentFileUrl);
             } else if (command == cmdPlayerQuit) {
                 savePreferences( LAST_FILE_RECORDSTORE, currentFileUrl, mp3Player.getMediaTime());
-
                 exitMIDlet();
+            }
+        } else if ( displayable == screenBookmarkList ){
+            if ( command == cmdBack ){
+                this.bookmarkList = null;
+                switchDisplayable(null, screenPlayer);
+            } else if ( command == List.SELECT_COMMAND ){
+                Bookmark b = (Bookmark) this.bookmarkList.getFullBmarkList().elementAt(screenBookmarkList.getSelectedIndex());
+                this.currentFileUrl = this.bookmarkList.getBmarkDirectory() + "/" + b.getFileName();
+                try {
+                    startMp3Player(b.getMillisecondsElapsed() * 1000);
+                } catch (MediaException ex) {
+                    ex.printStackTrace();
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                }
+                this.bookmarkList = null;
+                switchDisplayable(null, screenPlayer);
             }
         }
     }
@@ -459,14 +550,7 @@ public class PodPlayerMidlet extends MIDlet implements CommandListener, ItemStat
             switchDisplayable(null, getScreenFileBrowser());
         } else {
                 try {
-                    mp3Player = Manager.createPlayer(currentFileUrl);
-                    mp3Player.realize();
-                    mp3Player.prefetch();
-                    mp3Player.setMediaTime(startTime);
-                    volumeControl = (VolumeControl) mp3Player.getControl("VolumeControl");
-                    timeTask = new UpdateDisplayTask(mp3Player, timeGauge);
-
-                    timeDisplayTimer.scheduleAtFixedRate(timeTask, 0, 500);
+                    startMp3Player(this.startTime);
                 } catch (IOException ex) {
                     ex.printStackTrace();
                     switchDisplayable(null, getScreenFileBrowser() );
