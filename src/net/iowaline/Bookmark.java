@@ -141,7 +141,7 @@ public class Bookmark {
     }
 
     public String toString(){
-       return Util.formatMilliSeconds( (long) millisecondsElapsed)
+       return Util.formatMilliseconds( (long) millisecondsElapsed)
                + ", " + fileName;
     }
 

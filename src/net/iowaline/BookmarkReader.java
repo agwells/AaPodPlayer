@@ -23,7 +23,7 @@ public class BookmarkReader {
     private long fileSize;
     private final Vector bmarkList = new Vector();
 
-    BookmarkReader(String selectedFileUrl) {
+    public BookmarkReader(String selectedFileUrl) {
         this.selectedFileUrl = selectedFileUrl;
         // Figure out the parent directory's name
         int lastSlashPos = this.selectedFileUrl.lastIndexOf('/');
@@ -76,11 +76,11 @@ public class BookmarkReader {
         }
     }
 
-    long getFileSize(){
+    public long getFileSize(){
         return this.fileSize;
     }
 
-    String getBmarkDirectory(){
+    public String getBmarkDirectory(){
         return this.bmarkDirectory;
     }
 
@@ -89,7 +89,7 @@ public class BookmarkReader {
      *
      * @return Vector a vector full of Bookmark items
      */
-    Vector getFullBmarkList(){
+    public Vector getFullBmarkList(){
         return this.bmarkList;
     }
 

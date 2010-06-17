@@ -11,7 +11,11 @@ package net.iowaline;
  */
 public class Util {
 
-    public static String formatMilliSeconds( long numMilliseconds ){
+    public static String formatMicroseconds( long numMicroseconds ){
+        return Util.formatSecondFractions(numMicroseconds, 1000000 );
+    }
+
+    public static String formatMilliseconds( long numMilliseconds ){
         return Util.formatSecondFractions(numMilliseconds, 1000);
     }
 
