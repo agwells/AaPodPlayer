@@ -20,4 +20,4 @@ here it is, licensed under the GPL3.
 
 You'll probably need the Nokia Series 40 SDK to be able to compile this, which you should be able to get from somewhere under developers.nokia.com. Currently I see it at this URL: http://developer.nokia.com/downloads/P20
 
-I've also included a compiled version of the application in this repo, so if you don't want to compile it yourself you can try that: https://github.com/agwells/aaplayer/blob/master/dist/AaPodPlayer.jad
+I've also included a compiled version of the application in this repo, so if you don't want to compile it yourself you can try that: https://github.com/agwells/AaPodPlayer/blob/master/dist/AaPodPlayer.jad
