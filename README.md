@@ -1,5 +1,5 @@
-aaplayer
-========
+AaPodPlayer
+===========
 
 **(Half-completed) podcast-oriented MP3 player for Java ME & Nokia Series 40**
 
