@@ -37,7 +37,7 @@ public class PlayerScreenHandler implements CommandListener, ItemStateListener{
 
     private Gauge volumeGauge = new Gauge("Volume", true, 25, 12);;
     private Gauge timeGauge = new Gauge("0:00:00", true, 100, 0);;
-    private Command cmdChangeTrack = new Command("Change Track", Command.BACK, 15);
+    private Command cmdChangeTrack = new Command("Change Track", Command.ITEM, 15);
     private Command cmdBack15Sec = new Command("15s", Command.ITEM, 2);
     private Command cmdPlayerQuit = new Command("Quit", Command.EXIT, 15);
     private Command cmdPlayerPause = new Command("Play/Pause", Command.OK, 1);
@@ -134,7 +134,6 @@ public class PlayerScreenHandler implements CommandListener, ItemStateListener{
             volumeControl = (VolumeControl) mp3Player.getControl("VolumeControl");
             timeTask = new UpdateDisplayTask(mp3Player, timeGauge);
             timeDisplayTimer.scheduleAtFixedRate(timeTask, 0, 500);
-
         } catch (IOException ex) {
             return false;
         } catch (MediaException ex) {
@@ -177,7 +176,9 @@ public class PlayerScreenHandler implements CommandListener, ItemStateListener{
                 if ( mp3Player.getState() == Player.STARTED ){
                     mp3Player.stop();
                 } else {
+                    mp3Player.setMediaTime(mp3Player.getMediaTime());
                     mp3Player.start();
+//                    mp3Player.setMediaTime(l);
                 }
             } catch (MediaException ex){
                 ex.printStackTrace();

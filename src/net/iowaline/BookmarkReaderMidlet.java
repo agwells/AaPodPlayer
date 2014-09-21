@@ -58,6 +58,7 @@ try {
                     new String[0],
                     null
             );
+            scrnBookmarkList.append(bmark.msg, null);
             Vector bmarkList = bmark.getFullBmarkList();
             for( int i = 0; i < bmarkList.size(); i++ ){
                 scrnBookmarkList.append( bmarkList.elementAt(i).toString(), null);

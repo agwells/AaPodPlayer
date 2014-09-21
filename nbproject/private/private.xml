@@ -3,6 +3,11 @@
     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/1"/>
     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/1">
         <file>file:/C:/Users/aaron/Documents/NetBeansProjects/AaPlayer/src/net/iowaline/PodPlayerMidlet.java</file>
-        <file>file:/C:/Users/aaron/Documents/NetBeansProjects/AaPlayer/src/net/iowaline/Bookmark.java</file>
+        <file>file:/C:/Users/aaron/Documents/NetBeansProjects/AaPlayer/src/net/iowaline/screenhandler/FileBrowserScreenHandler.java</file>
+        <file>file:/C:/Users/aaron/Documents/NetBeansProjects/AaPlayer/src/net/iowaline/screenhandler/PlayerScreenHandler.java</file>
+        <file>file:/C:/Users/aaron/Documents/NetBeansProjects/AaPlayer/src/net/iowaline/screenhandler/BookmarkListScreenHandler.java</file>
+        <file>file:/C:/Users/aaron/Documents/NetBeansProjects/AaPlayer/src/net/iowaline/screenhandler/PreferencesHandler.java</file>
+        <file>file:/C:/Users/aaron/Documents/NetBeansProjects/AaPlayer/src/net/iowaline/BookmarkReaderMidlet.java</file>
+        <file>file:/C:/Users/aaron/Documents/NetBeansProjects/AaPlayer/src/net/iowaline/BookmarkReader.java</file>
     </open-files>
 </project-private>

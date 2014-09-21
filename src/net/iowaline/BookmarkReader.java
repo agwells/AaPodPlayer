@@ -22,6 +22,7 @@ public class BookmarkReader {
     private final FileConnection bmarkFile;
     private long fileSize;
     private final Vector bmarkList = new Vector();
+    String msg;
 
     public BookmarkReader(String selectedFileUrl) {
         this.selectedFileUrl = selectedFileUrl;
