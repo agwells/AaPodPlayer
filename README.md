@@ -20,5 +20,5 @@ here it is, licensed under the GPL3.
 
 You'll probably need the Nokia Series 40 SDK to be able to download this, which you should be able to get from somewhere under developers.nokia.com. Currently I see it at this URL: http://developer.nokia.com/downloads/P20
 
-I've also included a compiled version of the application in the [dist director](https://github.com/agwells/aaplayer/tree/master/dist) of this git repo, so if you don't want to build it yourself
+I've also included a compiled version of the application in the [/dist directory](https://github.com/agwells/aaplayer/tree/master/dist) of this git repo, so if you don't want to build it yourself
 you can try installing that.
