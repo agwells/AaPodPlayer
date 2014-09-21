@@ -3,7 +3,7 @@ aaplayer
 
 **(Half-completed) podcast-oriented MP3 player for Java ME & Nokia Series 40**
 
-Before I got my first Android phone, I had a Nokia running their [Series 40](http://en.wikipedia.org/wiki/Series_40) operating system. Occasionally I wanted to use it as a backup MP3 player for listening to podcasts while I was out on long walks. It came with an MP3 player, but as any dedicated podcast listener will know, there are a few additional features you need for a good podcast player:
+Before I got my first Android phone, I had a Nokia 2730c running their [Series 40](http://en.wikipedia.org/wiki/Series_40) operating system. Occasionally I wanted to use it as a backup MP3 player for listening to podcasts while I was out on long walks. It came with an MP3 player, but as any dedicated podcast listener will know, there are a few additional features you need for a good podcast player:
 
 * Automatic "bookmarking" to return to the same position when you leave and return to a track
 * The ability to easily skip backward a few seconds for when you hear something repeated.
@@ -17,3 +17,8 @@ player, and then I ran out of steam.
 
 Now I have an Android phone, so I probably won't be revisiting this project. But in case anyone might find it useful,
 here it is, licensed under the GPL3.
+
+You'll probably need the Nokia Series 40 SDK to be able to download this, which you should be able to get from somewhere under developers.nokia.com. Currently I see it at this URL: http://developer.nokia.com/downloads/P20
+
+I've also included a compiled version of the application in the [dist director](https://github.com/agwells/aaplayer/tree/master/dist) of this git repo, so if you don't want to build it yourself
+you can try installing that.
